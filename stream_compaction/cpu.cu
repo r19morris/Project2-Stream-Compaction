@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <vector>
 #include "cpu.h"
 
 #include "common.h"
@@ -34,9 +35,14 @@ namespace StreamCompaction {
          */
         int compactWithoutScan(int n, int *odata, const int *idata) {
             timer().startCpuTimer();
-            // TODO
+            int count = 0;
+            for (int i = 0; i < n; ++i) {
+                if (idata[i]) {
+                    odata[count++] = idata[i];
+                }
+            }
             timer().endCpuTimer();
-            return -1;
+            return count;
         }
 
         /**
@@ -46,9 +52,29 @@ namespace StreamCompaction {
          */
         int compactWithScan(int n, int *odata, const int *idata) {
             timer().startCpuTimer();
-            // TODO
+            // scan first into odata?
+            scan(n, odata, idata);
+            std::vector<int> temp(n);
+            for (int i = 0; i < n; ++i) {
+                if (idata[i]) {
+                    temp[i] = 1;
+                }
+                else {
+                    temp[i] = 0;
+                }
+            }
+            std::vector<int> scan_output(n);
+            scan(n, scan_output.data(), temp.data());
+            for (int i = 0; i < n; ++i) {
+                if (temp[i]) {
+                    odata[scan_output[i]] = idata[i];
+                }
+            }
+
+
+
             timer().endCpuTimer();
-            return -1;
+            return scan_output[n] + 1;
         }
     }
 }

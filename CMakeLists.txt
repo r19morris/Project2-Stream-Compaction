@@ -25,6 +25,8 @@ endif(UNIX)
 
 add_subdirectory(stream_compaction)
 
+target_compile_options(stream_compaction PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=/Zc:preprocessor>)
+
 include_directories(.)
 
 set(headers

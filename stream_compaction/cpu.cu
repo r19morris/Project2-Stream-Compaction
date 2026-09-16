@@ -28,6 +28,19 @@ namespace StreamCompaction {
             timer().endCpuTimer();
         }
 
+                /**
+         * CPU scan (prefix sum).
+         * For performance analysis, this is supposed to be a simple for loop.
+         * (Optional) For better understanding before starting moving to GPU, you can simulate your GPU scan in this function first.
+         */
+        void scan_no_timer(int n, int* odata, const int* idata) {
+            // Simple for loop version
+            odata[0] = 0;
+            for (int i = 1; i < n; ++i) {
+                odata[i] = odata[i - 1] + idata[i - 1];
+            }
+        }
+
         /**
          * CPU stream compaction without using the scan function.
          *
@@ -52,8 +65,6 @@ namespace StreamCompaction {
          */
         int compactWithScan(int n, int *odata, const int *idata) {
             timer().startCpuTimer();
-            // scan first into odata?
-            scan(n, odata, idata);
             std::vector<int> temp(n);
             for (int i = 0; i < n; ++i) {
                 if (idata[i]) {
@@ -64,7 +75,7 @@ namespace StreamCompaction {
                 }
             }
             std::vector<int> scan_output(n);
-            scan(n, scan_output.data(), temp.data());
+            scan_no_timer(n, scan_output.data(), temp.data());
             for (int i = 0; i < n; ++i) {
                 if (temp[i]) {
                     odata[scan_output[i]] = idata[i];
@@ -74,7 +85,7 @@ namespace StreamCompaction {
 
 
             timer().endCpuTimer();
-            return scan_output[n] + 1;
+            return scan_output[n - 1] + temp[n - 1];
         }
     }
 }

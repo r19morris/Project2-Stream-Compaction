@@ -13,13 +13,23 @@
 #include <stream_compaction/thrust.h>
 #include "testing_helpers.hpp"
 
-const int SIZE = 1 << 8; // feel free to change the size of array
-const int NPOT = SIZE - 3; // Non-Power-Of-Two
-int *a = new int[SIZE];
-int *b = new int[SIZE];
-int *c = new int[SIZE];
+
+int SIZE, NPOT; // dynamic
+int* a, * b, * c;
+
+//const int SIZE = 1 << 8; // feel free to change the size of array
+//const int NPOT = SIZE - 3; // Non-Power-Of-Two
+//int *a = new int[SIZE];
+//int *b = new int[SIZE];
+//int *c = new int[SIZE];
 
 int main(int argc, char* argv[]) {
+    // from CLI
+    SIZE = 1 << (argc > 1 ? atoi(argv[1]) : 8);
+    NPOT = SIZE - 3;
+    a = new int[SIZE]; b = new int[SIZE]; c = new int[SIZE];
+
+
     // Scan tests
 
     printf("\n");
@@ -147,7 +157,7 @@ int main(int argc, char* argv[]) {
     //printArray(count, c, true);
     printCmpLenResult(count, expectedNPOT, b, c);
 
-    system("pause"); // stop Win32 console from closing on exit
+    //system("pause"); // stop Win32 console from closing on exit
     delete[] a;
     delete[] b;
     delete[] c;

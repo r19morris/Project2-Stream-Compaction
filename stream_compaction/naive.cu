@@ -4,7 +4,7 @@
 #include "common.h"
 #include "naive.h"
 
-constexpr int BLOCK_SIZE = 256;
+constexpr int BLOCK_SIZE = 512;
 
 namespace StreamCompaction {
     namespace Naive {

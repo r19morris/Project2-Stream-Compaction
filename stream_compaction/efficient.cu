@@ -32,6 +32,20 @@ namespace StreamCompaction {
             return;
         }
 
+        // assumed to be called on power of 2 (padding done first)
+        __global__ void kernUpIter_improved(int n, int d, int* odata, const int* idata) {
+            int stride = 1 << d;
+            int skip = stride << 1; // e.g., layer one every 2 combine 1
+            int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+            if (idx < n / skip) {
+                int idx_2 = (idx + 1) * skip - 1;
+                odata[idx_2] = idata[idx_2] + idata[idx_2 - stride];
+            }
+
+            return;
+        }
+
         // assumes you replaced rightmost with 0.
         __global__ void kernDownIter(int n, int d, int* odata, const int* idata) {
             int stride = n >> (d + 1); // start with d=0
@@ -53,6 +67,23 @@ namespace StreamCompaction {
             return;
         }
 
+        // assumes you replaced rightmost with 0.
+        __global__ void kernDownIter_improved(int n, int d, int* odata, const int* idata) {
+            int stride = n >> (d + 1); // start with d=0
+            int dbl_stride = stride << 1;
+            int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+            if (idx < n / dbl_stride) {
+                int idx_2 = (idx + 1) * dbl_stride - 1; //right child
+                int t = idata[idx_2 - stride]; //left child
+                odata[idx_2 - stride] = idata[idx_2];
+                odata[idx_2] = idata[idx_2] + t;
+            }
+
+
+            return;
+        }
+
 
         /**
          * Performs prefix-sum (aka scan) on idata, storing the result into odata.
@@ -60,7 +91,7 @@ namespace StreamCompaction {
         void scan(int n, int *odata, const int *idata) {
             int iters = ilog2ceil(n);
             int padded_size = 1 << iters;
-            int num_blocks = (padded_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+            //int num_blocks = (padded_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
             std::vector<int> padded(padded_size, 0);
             std::copy(idata, idata + n, padded.begin());
@@ -72,8 +103,8 @@ namespace StreamCompaction {
             timer().startGpuTimer();
             // upsweep
             for (int d = 0; d < iters; ++d) {
-                kernUpIter << <num_blocks, BLOCK_SIZE >> > (padded_size, d, dev_out, dev_in);
-                std::swap(dev_in, dev_out);
+                int num_blocks = ((padded_size >> (d + 1)) + BLOCK_SIZE - 1) / BLOCK_SIZE;
+                kernUpIter_improved << <num_blocks, BLOCK_SIZE >> > (padded_size, d, dev_in, dev_in); // dont need both
             }
 
             // is this the best way to copy in the 0?
@@ -82,8 +113,8 @@ namespace StreamCompaction {
 
             // downsweep
             for (int d = 0; d < iters; ++d) {
-                kernDownIter << <num_blocks, BLOCK_SIZE >> > (padded_size, d, dev_out, dev_in);
-                std::swap(dev_in, dev_out);
+                int num_blocks = ((1 << d) + BLOCK_SIZE - 1) / BLOCK_SIZE;
+                kernDownIter_improved << <num_blocks, BLOCK_SIZE >> > (padded_size, d, dev_in, dev_in);
             }
             timer().endGpuTimer();
 
